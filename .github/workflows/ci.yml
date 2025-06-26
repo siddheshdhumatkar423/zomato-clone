@@ -2,7 +2,7 @@ name: MERN Zomato CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [master]
 
 jobs:
   build:
