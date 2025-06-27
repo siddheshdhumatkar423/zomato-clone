@@ -3,7 +3,7 @@ name: Build, Test and Deploy Zomato Clone
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   build-test-deploy:
