@@ -36,7 +36,7 @@ jobs:
     - name: Confirm frontend build output
       run: ls -la ./client/dist
 
-    # 🧹 Clean old frontend files from GCP
+    # 🧹 Clean /var/www/html (no sudo)
     - name: Clean /var/www/html on GCP VM
       uses: appleboy/ssh-action@v1.0.0
       with:
@@ -47,8 +47,8 @@ jobs:
           echo "🧹 Removing old frontend files..."
           rm -rf /var/www/html/*
 
-    # 📤 Upload backend folder
-    - name: Upload backend to GCP VM
+    # 📤 Upload backend to GCP VM
+    - name: Upload backend folder to GCP
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ secrets.GCP_VM_IP }}
@@ -57,7 +57,7 @@ jobs:
         source: "server"
         target: "/home/${{ secrets.GCP_VM_USER }}/zomato-clone"
 
-    # 📤 Upload frontend build
+    # 📤 Upload frontend to NGINX path
     - name: Upload frontend to NGINX path
       uses: appleboy/scp-action@v0.1.7
       with:
@@ -69,7 +69,7 @@ jobs:
         strip_components: 2
 
     # 🚀 Start backend with PM2
-    - name: Start backend on GCP VM
+    - name: Start backend with PM2 on GCP
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.GCP_VM_IP }}
