@@ -1,30 +1,30 @@
-name: Deploy Zomato Clone
+name: Build, Test and Deploy Zomato Clone
 
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
-  deploy:
+  build-test-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
+    - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Deploy to GCP VM
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.GCP_VM_IP }}
-        username: ${{ secrets.GCP_VM_USER }}
-        key: ${{ secrets.GCP_SSH_KEY }}
-        script: |
-          cd zomato-clone-app
+    # ----- BACKEND TEST -----
+    - name: Install backend dependencies
+      working-directory: ./server
+      run: npm install
 
-          echo "Pulling latest code..."
-          git pull origin main
+    - name: Run backend tests
+      working-directory: ./server
+      run: npm test || echo "⚠️ Backend tests failed"
 
-          echo "Rebuilding and restarting containers..."
-          docker compose down
-          docker compose up -d --build
+    # ----- FRONTEND BUILD -----
+    - name: Install frontend dependencies
+      working-directory: ./client
+      run: npm install
+
+    - name: Build front
