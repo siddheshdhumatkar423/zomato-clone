@@ -1,4 +1,4 @@
-name: Build, Test and Deploy Zomato Clone
+name: Build, Test and Deploy Zomato Clone (Docker Compose)
 
 on:
   push:
@@ -10,11 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # ----- CHECKOUT CODE -----
-    - name: Checkout Code
+    # 📦 Checkout repo
+    - name: Checkout code
       uses: actions/checkout@v4
 
-    # ----- BACKEND TEST -----
+    # 🧪 Backend: Install & test
     - name: Install backend dependencies
       working-directory: ./server
       run: npm install
@@ -23,7 +23,7 @@ jobs:
       working-directory: ./server
       run: npm test || echo "⚠️ Backend tests failed"
 
-    # ----- FRONTEND BUILD -----
+    # 🌐 Frontend: Install & build
     - name: Install frontend dependencies
       working-directory: ./client
       run: npm install
@@ -32,45 +32,37 @@ jobs:
       working-directory: ./client
       run: npm run build
 
-    # ----- VERIFY DIST EXISTS -----
-    - name: Confirm dist folder exists
+    # ✅ Verify frontend build exists
+    - name: Check dist folder
       run: ls -la ./client/dist
 
-    # ----- COPY BACKEND TO GCP -----
-    - name: Upload backend to GCP VM
+    # 📤 Upload full source code to GCP VM
+    - name: Upload project to GCP VM
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ secrets.GCP_VM_IP }}
         username: ${{ secrets.GCP_VM_USER }}
         key: ${{ secrets.GCP_SSH_KEY }}
-        source: "server"
+        source: "."
         target: "/home/${{ secrets.GCP_VM_USER }}/zomato-clone"
+        rm: true
 
-    # ----- COPY FRONTEND BUILD TO NGINX -----
-    - name: Upload frontend build to NGINX
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.GCP_VM_IP }}
-        username: ${{ secrets.GCP_VM_USER }}
-        key: ${{ secrets.GCP_SSH_KEY }}
-        source: "client/dist"
-        target: "/var/www/html"
-        strip_components: 2
-
-    # ----- START BACKEND ON GCP -----
-    - name: Start backend on GCP VM using PM2
+    # 🚀 Deploy using Docker Compose
+    - name: Deploy on GCP using Docker Compose
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.GCP_VM_IP }}
         username: ${{ secrets.GCP_VM_USER }}
         key: ${{ secrets.GCP_SSH_KEY }}
         script: |
-          echo "📦 Installing backend dependencies..."
-          cd ~/zomato-clone/server
-          npm install
+          echo "📂 Switching to project directory..."
+          cd ~/zomato-clone
 
-          echo "🟢 Restarting backend using PM2..."
-          pm2 delete backend || true
-          pm2 start index.js --name backend
+          echo "🛑 Stopping old containers..."
+          docker compose down
 
-          echo "✅ Backend deployed and running"
+          echo "🚀 Building and starting containers..."
+          docker compose up -d --build
+
+          echo "✅ Deployment complete."
+
