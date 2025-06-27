@@ -1,4 +1,4 @@
-name: Build, Test and Deploy Zomato Clone (No Sudo)
+name: Build, Test and Deploy Zomato Clone (Manual - No Docker, No Sudo)
 
 on:
   push:
@@ -10,11 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 📥 Checkout source code
-    - name: Checkout Code
+    # 📦 Checkout repo
+    - name: Checkout code
       uses: actions/checkout@v4
 
-    # 🔧 Backend: Install and test
+    # 🧪 Backend: Install & test
     - name: Install backend dependencies
       working-directory: ./server
       run: npm install
@@ -23,7 +23,7 @@ jobs:
       working-directory: ./server
       run: npm test || echo "⚠️ Backend tests failed"
 
-    # 🌐 Frontend: Install and build
+    # 🌐 Frontend: Install & build
     - name: Install frontend dependencies
       working-directory: ./client
       run: npm install
@@ -32,10 +32,11 @@ jobs:
       working-directory: ./client
       run: npm run build
 
-    - name: Confirm frontend build exists
+    # ✅ Check frontend build
+    - name: Check dist folder
       run: ls -la ./client/dist
 
-    # 📤 Upload full project to GCP VM
+    # 📤 Upload code to GCP VM
     - name: Upload project to GCP VM
       uses: appleboy/scp-action@v0.1.7
       with:
@@ -46,26 +47,30 @@ jobs:
         target: "/home/${{ secrets.GCP_VM_USER }}/zomato-clone"
         rm: true
 
-    # 🚀 Deploy backend and frontend (NO sudo)
-    - name: Deploy on GCP VM
+    # 🚀 Deploy: Restart backend, update frontend
+    - name: Deploy to GCP VM
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.GCP_VM_IP }}
         username: ${{ secrets.GCP_VM_USER }}
         key: ${{ secrets.GCP_SSH_KEY }}
         script: |
+          echo "📂 Switching to app directory..."
+          cd ~/zomato-clone
+
           echo "🔧 Installing backend dependencies..."
-          cd ~/zomato-clone/server
-          npm install
+          cd server
+          npm install --legacy-peer-deps
 
           echo "🔁 Restarting backend with PM2..."
           pm2 delete backend || true
           pm2 start index.js --name backend
 
-          echo "🧹 Cleaning old frontend..."
+          echo "🌐 Cleaning up existing frontend..."
           rm -rf /var/www/html/*
-          
-          echo "🚚 Copying new frontend build..."
-          cp -r ~/zomato-clone/client/dist/* /var/www/html/
+
+          echo "📤 Copying new frontend files..."
+          cp -r ../client/dist/* /var/www/html/
 
           echo "✅ Deployment complete!"
+
