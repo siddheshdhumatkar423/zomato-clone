@@ -38,12 +38,4 @@ jobs:
         host: ${{ secrets.GCP_VM_IP }}
         username: ${{ secrets.GCP_VM_USER }}
         key: ${{ secrets.GCP_SSH_KEY }}
-        script: |
-          cd zomato-clone-app
-
-          echo "Pulling latest changes..."
-          git pull origin main
-
-          echo "Rebuilding and restarting Docker Compose..."
-          docker compose down
-          docker compose up -d --build
+        
