@@ -36,6 +36,17 @@ jobs:
     - name: Confirm build exists
       run: ls -la ./client/dist
 
+    # 🧹 Clean NGINX directory on GCP VM
+    - name: Clean NGINX /var/www/html
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.GCP_VM_IP }}
+        username: ${{ secrets.GCP_VM_USER }}
+        key: ${{ secrets.GCP_SSH_KEY }}
+        script: |
+          echo "🧹 Cleaning old frontend..."
+          sudo rm -rf /var/www/html/*
+
     # 📤 Upload backend to GCP VM
     - name: Upload backend folder to GCP
       uses: appleboy/scp-action@v0.1.7
@@ -57,7 +68,7 @@ jobs:
         target: "/var/www/html"
         strip_components: 2
 
-    # 🚀 Start backend using PM2
+    # 🚀 Start backend with PM2
     - name: Start backend with PM2
       uses: appleboy/ssh-action@v1.0.0
       with:
@@ -73,5 +84,4 @@ jobs:
           pm2 delete backend || true
           pm2 start index.js --name backend
 
-          echo "✅ Backend is running!"
-
+          echo "✅ Backend deployed successfully!"
