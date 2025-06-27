@@ -1,4 +1,4 @@
-name: Build, Test and Deploy Zomato Clone (Docker Compose)
+name: Build, Test and Deploy Zomato Clone (Manual - No Docker)
 
 on:
   push:
@@ -36,7 +36,7 @@ jobs:
     - name: Check dist folder
       run: ls -la ./client/dist
 
-    # 📤 Upload full source code to GCP VM
+    # 📤 Upload only built & required files to GCP VM
     - name: Upload project to GCP VM
       uses: appleboy/scp-action@v0.1.7
       with:
@@ -47,22 +47,26 @@ jobs:
         target: "/home/${{ secrets.GCP_VM_USER }}/zomato-clone"
         rm: true
 
-    # 🚀 Deploy using Docker Compose
-    - name: Deploy on GCP using Docker Compose
+    # 🚀 Restart PM2 or NGINX-based Deployment
+    - name: Deploy on GCP VM (Manual start)
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.GCP_VM_IP }}
         username: ${{ secrets.GCP_VM_USER }}
         key: ${{ secrets.GCP_SSH_KEY }}
         script: |
-          echo "📂 Switching to project directory..."
+          echo "📂 Switching to app directory..."
           cd ~/zomato-clone
 
-          echo "🛑 Stopping old containers..."
-          docker compose down
+          echo "🔧 Installing backend dependencies..."
+          cd server
+          npm install --legacy-peer-deps
 
-          echo "🚀 Building and starting containers..."
-          docker compose up -d --build
+          echo "🔁 Restarting backend with PM2..."
+          pm2 restart index.js || pm2 start index.js
 
-          echo "✅ Deployment complete."
+          echo "🌐 Updating frontend build in /var/www/html..."
+          sudo rm -rf /var/www/html/*
+          sudo cp -r ../client/dist/* /var/www/html/
 
+          echo "✅ Deployment complete!"
