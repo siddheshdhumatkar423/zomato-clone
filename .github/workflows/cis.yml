@@ -31,32 +31,37 @@ jobs:
       working-directory: ./client
       run: npm run build
 
-    # ----- DEPLOY TO GCP VM WITHOUT DOCKER -----
-    - name: Deploy to GCP VM
+    # ----- UPLOAD BACKEND TO GCP VM -----
+    - name: Copy backend folder to GCP
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.GCP_VM_IP }}
+        username: ${{ secrets.GCP_VM_USER }}
+        key: ${{ secrets.GCP_SSH_KEY }}
+        source: "./server"
+        target: "/home/${{ secrets.GCP_VM_USER }}/zomato-clone"
+
+    # ----- UPLOAD FRONTEND BUILD TO NGINX -----
+    - name: Copy frontend build to NGINX on GCP
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.GCP_VM_IP }}
+        username: ${{ secrets.GCP_VM_USER }}
+        key: ${{ secrets.GCP_SSH_KEY }}
+        source: "./client/dist/*"
+        target: "/var/www/html"
+
+    # ----- SSH TO START BACKEND -----
+    - name: Start backend on GCP
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.GCP_VM_IP }}
         username: ${{ secrets.GCP_VM_USER }}
         key: ${{ secrets.GCP_SSH_KEY }}
         script: |
-          # Navigate to project folder
-          cd zomato-clone-app || git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git zomato-clone-app && cd zomato-clone-app
-
-          echo "Pulling latest code..."
-          git pull origin master
-
-          echo "Installing backend dependencies..."
-          cd server
+          cd ~/zomato-clone/server
           npm install
-          pm2 delete all || true
+          pm2 delete backend || true
           pm2 start index.js --name backend
-          cd ..
 
-          echo "Installing frontend dependencies and building..."
-          cd client
-          npm install
-          npm run build
-          sudo rm -rf /var/www/html/*
-          sudo cp -r dist/* /var/www/html/
-
-          echo "✅ Deployment finished"
+          echo "✅ Backend running via PM2"
