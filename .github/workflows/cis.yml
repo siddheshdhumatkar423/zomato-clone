@@ -10,10 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # 📦 Checkout code
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    # ----- BACKEND TEST -----
+    # 🧪 Backend: install & test
     - name: Install backend dependencies
       working-directory: ./server
       run: npm install
@@ -22,7 +23,7 @@ jobs:
       working-directory: ./server
       run: npm test || echo "⚠️ Backend tests failed"
 
-    # ----- FRONTEND BUILD -----
+    # 🌐 Frontend: install & build
     - name: Install frontend dependencies
       working-directory: ./client
       run: npm install
@@ -31,37 +32,45 @@ jobs:
       working-directory: ./client
       run: npm run build
 
-    # ----- UPLOAD BACKEND TO GCP VM -----
-    - name: Copy backend folder to GCP
+    # 🔍 Confirm frontend build exists
+    - name: Confirm build exists
+      run: ls -la ./client/dist
+
+    # 📤 Upload backend to GCP VM
+    - name: Upload backend folder to GCP
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ secrets.GCP_VM_IP }}
         username: ${{ secrets.GCP_VM_USER }}
         key: ${{ secrets.GCP_SSH_KEY }}
-        source: "./server"
+        source: "server"
         target: "/home/${{ secrets.GCP_VM_USER }}/zomato-clone"
 
-    # ----- UPLOAD FRONTEND BUILD TO NGINX -----
-    - name: Copy frontend build to NGINX on GCP
+    # 📤 Upload frontend build to NGINX
+    - name: Upload frontend build to NGINX
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ secrets.GCP_VM_IP }}
         username: ${{ secrets.GCP_VM_USER }}
         key: ${{ secrets.GCP_SSH_KEY }}
-        source: "./client/dist/*"
+        source: "client/dist"
         target: "/var/www/html"
+        strip_components: 2
 
-    # ----- SSH TO START BACKEND -----
-    - name: Start backend on GCP
+    # 🚀 Start backend using PM2
+    - name: Start backend with PM2
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.GCP_VM_IP }}
         username: ${{ secrets.GCP_VM_USER }}
         key: ${{ secrets.GCP_SSH_KEY }}
         script: |
+          echo "📦 Installing backend dependencies..."
           cd ~/zomato-clone/server
           npm install
+
+          echo "🔁 Restarting backend with PM2..."
           pm2 delete backend || true
           pm2 start index.js --name backend
 
-          echo "✅ Backend running via PM2"
+          echo "✅ Backend is running!"
